@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import argparse
+import re
 import sys
 
 def main():
@@ -94,6 +95,12 @@ def parse_mounts():
     with open("/proc/mounts") as fd:
         for line in fd.read().splitlines():
             source, destination, type_, _ = line.split(" ", 3)
+
+            # Decode the string (backslash-escaped octal values)
+            elements = re.split(r"\\([0-7]{1,3})", source)
+            elements[1::2] = [chr(int(x, 8)) for x in elements[1::2]]
+            source = "".join(elements)
+
             if type_ != "drvfs":
                 continue
             linux_roots[source] = destination
