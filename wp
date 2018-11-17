@@ -3,7 +3,9 @@
 from __future__ import print_function
 
 import argparse
+import json
 import re
+import subprocess
 import sys
 
 def main():
@@ -16,7 +18,7 @@ def main():
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
-        "-w", action="store_true", 
+        "-w", action="store_true",
         help=(
             "Print the Windows path equivalent to PATH, "
             "using backslashes"))
@@ -26,13 +28,13 @@ def main():
             "Print the Windows path equivalent to PATH, "
             "using forward slashes in place of backslashes"))
     group.add_argument(
-        "-u", action="store_true", 
+        "-u", action="store_true",
         help="Print the Linux path equivalent to PATH")
 
     arguments = parser.parse_args()
 
     converter = [
-        x for x in vars(arguments) 
+        x for x in vars(arguments)
         if x in ["w", "m", "u"] and getattr(arguments, x)]
     if not converter:
         raise NotImplementedError("TODO")
@@ -46,7 +48,7 @@ def convert_w(linux_path):
     """ Convert a Linux path to a Windows path. """
 
     windows_roots = parse_mounts()[1]
-    linux_root = find_root(windows_roots, linux_path)
+    linux_root = find_root(windows_roots, linux_path, "/")
     linux_leaf = linux_path[len(linux_root):]
 
     windows_root = windows_roots[linux_root]
@@ -57,7 +59,7 @@ def convert_w(linux_path):
 def convert_m(linux_path):
     """ Convert a Linux path to a Windows path with forward slashes. """
     windows_roots = parse_mounts()[1]
-    linux_root = find_root(windows_roots, linux_path)
+    linux_root = find_root(windows_roots, linux_path, "/")
     linux_leaf = linux_path[len(linux_root):]
     windows_root = windows_roots[linux_root]
 
@@ -67,7 +69,7 @@ def convert_u(windows_path):
     """ Convert an absolute Windows path to a Linux path. """
 
     linux_roots = parse_mounts()[0]
-    windows_root = find_root(linux_roots, windows_path)
+    windows_root = find_root(linux_roots, windows_path, "\\")
     windows_leaf = windows_path[len(windows_root):]
 
     if not windows_leaf.startswith("\\"):
@@ -92,24 +94,20 @@ def parse_mounts():
     linux_roots = {}
     # Map a Linux root to a Windows root
     windows_roots = {}
-    with open("/proc/mounts") as fd:
-        for line in fd.read().splitlines():
-            source, destination, type_, _ = line.split(" ", 3)
 
-            # Decode the string (backslash-escaped octal values)
-            elements = re.split(r"\\([0-7]{1,3})", source)
-            elements[1::2] = [chr(int(x, 8)) for x in elements[1::2]]
-            source = "".join(elements)
-
-            if type_ != "drvfs":
-                continue
-            linux_roots[source] = destination
-            windows_roots[destination] = source
+    data = subprocess.check_output(["findmnt", "-J", "-l", "-t", "drvfs"])
+    data = json.loads(data)
+    for filesystem in data["filesystems"]:
+        linux_path, windows_path = filesystem["target"], filesystem["source"]
+        linux_roots[windows_path] = linux_path
+        windows_roots[linux_path] = windows_path
 
     return linux_roots, windows_roots
 
-def find_root(roots, path):
-    candidates = [x for x in roots if path.startswith(x)]
+def find_root(roots, path, separator):
+    candidates = [
+        x for x in roots
+        if path.startswith("{}{}".format(x, separator))]
     if not candidates:
         raise Exception("No root found for {}".format(path))
     elif len(candidates) > 1:
