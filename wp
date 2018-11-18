@@ -33,14 +33,13 @@ def main():
 
     arguments = parser.parse_args()
 
-    converter = [
+    converters = [
         x for x in vars(arguments)
         if x in ["w", "m", "u"] and getattr(arguments, x)]
-    if not converter:
-        raise NotImplementedError("TODO")
+    if not converters:
+        converter = guess_converter(arguments.path)
     else:
-        converter = converter[0]
-    converter = globals()["convert_{}".format(converter)]
+        converter = globals()["convert_{}".format(converters[0])]
 
     print(converter(arguments.path))
 
@@ -80,6 +79,23 @@ def convert_u(windows_path):
 
     return "".join([linux_root, linux_leaf])
 
+def guess_converter(path):
+    """ Guess the best converter (to Windows with backslashes or to Linux) for
+        a path.
+    """
+
+    if re.match(r"^[a-zA-Z]:", path):
+        # Drive letter and colon: Windows path
+        return convert_u
+    elif re.match(r"^\\", path):
+        # UNC path: convert to Linux
+        return convert_u
+    elif re.match(r"^/[^/]", path):
+        # Slash followed by non-slash: Linux path
+        return convert_w
+    else:
+        raise Exception("Could not guess converter for \"{}\"".format(path))
+
 def parse_mounts():
     """ Return a map of Windows roots to their corresponding Linux root and a
         map of Linux roots to their corresponding Windows root.
@@ -105,6 +121,8 @@ def parse_mounts():
     return linux_roots, windows_roots
 
 def find_root(roots, path, separator):
+    """ Return the root matching the given path followed by a separator. """
+
     candidates = [
         x for x in roots
         if path.startswith("{}{}".format(x, separator))]
