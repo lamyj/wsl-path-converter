@@ -1,47 +1,4 @@
-#!/usr/bin/env python
-
-from __future__ import print_function
-
-import argparse
-import json
 import re
-import subprocess
-import sys
-
-def main():
-    parser = argparse.ArgumentParser(
-        description=(
-            "Convert between Linux and Windows paths in WSL. "
-            "If no converter is explicitely specified, an implicit one is "
-            "deduced."))
-    parser.add_argument("path", metavar="PATH")
-
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "-w", action="store_true",
-        help=(
-            "Print the Windows path equivalent to PATH, "
-            "using backslashes"))
-    group.add_argument(
-        "-m", action="store_true",
-        help=(
-            "Print the Windows path equivalent to PATH, "
-            "using forward slashes in place of backslashes"))
-    group.add_argument(
-        "-u", action="store_true",
-        help="Print the Linux path equivalent to PATH")
-
-    arguments = parser.parse_args()
-
-    converters = [
-        x for x in vars(arguments)
-        if x in ["w", "m", "u"] and getattr(arguments, x)]
-    if not converters:
-        converter = guess_converter(arguments.path)
-    else:
-        converter = globals()["convert_{}".format(converters[0])]
-
-    print(converter(arguments.path))
 
 def convert_w(linux_path):
     """ Convert a Linux path to a Windows path. """
@@ -110,13 +67,17 @@ def parse_mounts():
     linux_roots = {}
     # Map a Linux root to a Windows root
     windows_roots = {}
-
-    data = subprocess.check_output(["findmnt", "-J", "-l", "-t", "drvfs"])
-    data = json.loads(data)
-    for filesystem in data["filesystems"]:
-        linux_path, windows_path = filesystem["target"], filesystem["source"]
-        linux_roots[windows_path] = linux_path
-        windows_roots[linux_path] = windows_path
+    
+    with open("/proc/mounts", "rb") as fd:
+        for line in fd.read().splitlines():
+            source, target, type_, _ = line.split(b" ", 3)
+            # Decode the string (backslash-escaped octal values)
+            source = source.decode("unicode-escape")
+            target = target.decode("unicode-escape")
+            if type_ != b"drvfs":
+                continue
+            linux_roots[source] = target
+            windows_roots[target] = source
 
     return linux_roots, windows_roots
 
@@ -125,13 +86,10 @@ def find_root(roots, path, separator):
 
     candidates = [
         x for x in roots
-        if path.startswith("{}{}".format(x, separator))]
+        if path == x or path.startswith("{}{}".format(x, separator))]
     if not candidates:
         raise Exception("No root found for {}".format(path))
     elif len(candidates) > 1:
         raise Exception("Multiple roots found for {}".format(path))
 
     return candidates[0]
-
-if __name__ == "__main__":
-    sys.exit(main())
