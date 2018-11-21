@@ -4,6 +4,8 @@ import argparse
 import re
 import sys
 
+from . import convert_w, convert_u, convert_m, guess_converter
+
 def main():
     parser = argparse.ArgumentParser(
         description=(
