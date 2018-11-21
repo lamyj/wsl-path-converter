@@ -1,43 +1,32 @@
-import builtins
-import io
 import unittest
 
 import wsl_path_converter
 
-mounts = b""
+from mocked_open_test_case import MockedOpenTestCase
 
-original_open = builtins.open
-def mocked_open(path, *args, **kwargs):
-    if path == "/proc/mounts":
-        return io.BytesIO(mounts)
-    else:
-        return original_open(path, *args, **kwargs)
-builtins.open = mocked_open
-
-class TestConvert(unittest.TestCase):
-    def setUp(self):
-        
+class TestConvert(MockedOpenTestCase):
+    
     def test_w_local(self):
-        globals()["mounts"] = b"C: /mnt/c drvfs rw,relatime 0 0"
+        self.mounts = b"C: /mnt/c drvfs rw,relatime 0 0"
         path = wsl_path_converter.convert_w(
             "/mnt/c/Users/myself/Pictures/Camera Roll")
         self.assertEqual(path, u"C:\\Users\\myself\\Pictures\\Camera Roll")
     
     def test_w_remote(self):
-        globals()["mounts"] = (
+        self.mounts = (
             b"\\134\\134samba.example.com\\134my\\040share /samba " 
             b"drvfs rw,relatime 0 0")
         path = wsl_path_converter.convert_w("/samba/Foo")
         self.assertEqual(path, u"\\\\samba.example.com\\my share\\Foo")
     
     def test_u_local(self):
-        globals()["mounts"] = b"C: /mnt/c drvfs rw,relatime 0 0"
+        self.mounts = b"C: /mnt/c drvfs rw,relatime 0 0"
         path = wsl_path_converter.convert_u(
             u"C:\\Users\\myself\\Pictures\\Camera Roll")
         self.assertEqual(path, u"/mnt/c/Users/myself/Pictures/Camera Roll")
     
     def test_u_remote(self):
-        globals()["mounts"] = (
+        self.mounts = (
             b"\\134\\134samba.example.com\\134my\\040share /samba " 
             b"drvfs rw,relatime 0 0")
         path = wsl_path_converter.convert_u(
