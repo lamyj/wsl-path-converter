@@ -14,6 +14,8 @@ Or clone the source repository and install the bleeding-edge version:
     cd wsl-path-converter
     pip install .
 
+If the latter case is run by a regular user, i.e. non-root, the `wpc` executable will be installed in `~/.local/bin`.
+
 ## Usage
 
 This converter works with Windows path mounted in WSL, either through `/etc/fstab` or through the `mount` command.
