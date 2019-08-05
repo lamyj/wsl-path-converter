@@ -10,7 +10,7 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="wsl-path-converter",
-    version="0.2.0",
+    version="0.3.0",
     
     description="Convert between Linux and Windows path in WSL",
     long_description=long_description,
