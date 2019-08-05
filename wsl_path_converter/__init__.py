@@ -71,11 +71,17 @@ def parse_mounts():
     with open("/proc/mounts", "rb") as fd:
         for line in fd.read().splitlines():
             source, target, type_, _ = line.split(b" ", 3)
-            # Decode the string (backslash-escaped octal values)
-            source = source.decode("unicode-escape")
-            target = target.decode("unicode-escape")
+            
             if type_ != b"drvfs":
                 continue
+            
+            # Decode the string (backslash-escaped octal values)
+            source = source.decode("unicode-escape")
+            # If the root is a fully qualified drive letter, remove the final "\"
+            source = re.sub(r"^([a-zA-Z]:)(\\$)", r"\1", source)
+            
+            target = target.decode("unicode-escape")
+            
             linux_roots[source] = target
             windows_roots[target] = source
 
