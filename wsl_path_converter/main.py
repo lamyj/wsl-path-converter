@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import argparse
+import platform
 import re
 import sys
 
@@ -30,6 +31,10 @@ def main():
         help="Print the Linux path equivalent to PATH")
 
     arguments = parser.parse_args()
+    
+    uname = platform.uname()
+    if uname.system.lower() != "linux" or "microsoft" not in uname.release.lower():
+        parser.error("wpc must be run inside WSL")
 
     converters = [
         x for x in vars(arguments)

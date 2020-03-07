@@ -18,7 +18,7 @@ If the latter case is run by a regular user, i.e. non-root, the `wpc` executable
 
 ## Usage
 
-This converter works with Windows path mounted in WSL, either through `/etc/fstab` or through the `mount` command.
+This converter works with Windows path mounted in WSL, either through `/etc/fstab` or through the `mount` command: it must be used from within WSL to access the required information.
 
 The executable is called `wpc`. To convert a Windows path to its Linux counterpart, run it with the `-u` option:
 
