@@ -72,7 +72,7 @@ def parse_mounts():
         for line in fd.read().splitlines():
             source, target, type_, _ = line.split(b" ", 3)
             
-            if type_ != b"drvfs":
+            if type_ not in (b"drvfs", b"9p"):
                 continue
             
             # Decode the string (backslash-escaped octal values)
